@@ -1,0 +1,197 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+  --font-heading: var(--font-sans);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-8: var(--chart-8);
+  --color-chart-7: var(--chart-7);
+  --color-chart-6: var(--chart-6);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-cat-blue: var(--cat-blue);
+  --color-cat-orange: var(--cat-orange);
+  --color-cat-aqua: var(--cat-aqua);
+  --color-cat-yellow: var(--cat-yellow);
+  --color-cat-magenta: var(--cat-magenta);
+  --color-cat-green: var(--cat-green);
+  --color-cat-violet: var(--cat-violet);
+  --color-cat-red: var(--cat-red);
+  --color-cat-gray: var(--cat-gray);
+  --color-positive: var(--positive);
+  --color-negative: var(--negative);
+  --color-warning: var(--warning);
+  --color-surface: var(--surface);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+:root {
+  /* Minimal, flat: one white plane (no boxed cards), monochrome actions; color only carries data. */
+  --background: #ffffff;
+  --foreground: oklch(0.18 0.005 265);
+  --surface: #ffffff;
+  --card: #ffffff;
+  --card-foreground: oklch(0.18 0.005 265);
+  --popover: #ffffff;
+  --popover-foreground: oklch(0.18 0.005 265);
+  --primary: oklch(0.2 0.005 265);
+  --primary-foreground: #ffffff;
+  --secondary: oklch(0.955 0.004 265);
+  --secondary-foreground: oklch(0.24 0.01 265);
+  --muted: oklch(0.955 0.003 265);
+  --muted-foreground: oklch(0.5 0.01 265);
+  --accent: oklch(0.96 0.003 265);
+  --accent-foreground: oklch(0.2 0.005 265);
+  --destructive: #c53030;
+  --border: oklch(0.93 0.003 265);
+  --input: oklch(0.89 0.005 265);
+  --ring: oklch(0.66 0.12 272);
+  /*
+   * Charts: the validated 8-slot categorical palette (dataviz skill, references/palette.md),
+   * slot order blue, orange, aqua, yellow, magenta, green, violet, red. Light-mode aqua, yellow
+   * and magenta sit below 3:1 on white → every chart needs visible labels or a table view.
+   */
+  --chart-1: #2a78d6;
+  --chart-2: #eb6834;
+  --chart-3: #1baf7a;
+  --chart-4: #eda100;
+  --chart-5: #e87ba4;
+  --chart-6: #008300;
+  --chart-7: #6250d6;
+  --chart-8: #e34948;
+  /* Category colors (src/lib/categories.ts CATEGORY_COLORS) — use categoryColorVar(). */
+  --cat-blue: #2a78d6;
+  --cat-orange: #eb6834;
+  --cat-aqua: #1baf7a;
+  --cat-yellow: #eda100;
+  --cat-magenta: #e87ba4;
+  --cat-green: #008300;
+  --cat-violet: #6250d6;
+  --cat-red: #e34948;
+  --cat-gray: #898781;
+  /* Semantic money / status colors — text-safe (≥ 4.5:1 on cards and page). */
+  --positive: #047857;
+  --negative: #c53030;
+  /* amber-800: ≥ 4.5:1 for 12 px text on bg-warning/10 badges (WCAG AA). */
+  --warning: #92400e;
+  --radius: 0.625rem;
+  --sidebar: #ffffff;
+  --sidebar-foreground: oklch(0.45 0.008 265);
+  --sidebar-primary: oklch(0.2 0.005 265);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: oklch(0.96 0.003 265);
+  --sidebar-accent-foreground: oklch(0.18 0.005 265);
+  --sidebar-border: oklch(0.93 0.003 265);
+  --sidebar-ring: oklch(0.66 0.12 272);
+}
+
+.dark {
+  --background: #111111;
+  --foreground: oklch(0.95 0.003 265);
+  --surface: #111111;
+  --card: #111111;
+  --card-foreground: oklch(0.95 0.003 265);
+  --popover: #1f1f1e;
+  --popover-foreground: oklch(0.95 0.003 265);
+  --primary: oklch(0.95 0.003 265);
+  --primary-foreground: #111111;
+  --secondary: oklch(0.27 0.004 265);
+  --secondary-foreground: oklch(0.95 0.003 265);
+  --muted: oklch(0.26 0.003 265);
+  --muted-foreground: oklch(0.72 0.008 265);
+  --accent: oklch(0.24 0.003 265);
+  --accent-foreground: oklch(0.96 0.003 265);
+  --destructive: #f87171;
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 14%);
+  --ring: oklch(0.6 0.12 272);
+  --chart-1: #3987e5;
+  --chart-2: #d95926;
+  --chart-3: #199e70;
+  --chart-4: #c98500;
+  --chart-5: #d55181;
+  --chart-6: #008300;
+  --chart-7: #9085e9;
+  --chart-8: #e66767;
+  --cat-blue: #3987e5;
+  --cat-orange: #d95926;
+  --cat-aqua: #199e70;
+  --cat-yellow: #c98500;
+  --cat-magenta: #d55181;
+  --cat-green: #008300;
+  --cat-violet: #9085e9;
+  --cat-red: #e66767;
+  --cat-gray: #898781;
+  --positive: #3fb950;
+  --negative: #f87171;
+  --warning: #fab219;
+  --sidebar: #111111;
+  --sidebar-foreground: oklch(0.7 0.005 265);
+  --sidebar-primary: oklch(0.95 0.003 265);
+  --sidebar-primary-foreground: #111111;
+  --sidebar-accent: oklch(0.22 0.003 265);
+  --sidebar-accent-foreground: oklch(0.97 0.003 265);
+  --sidebar-border: oklch(1 0 0 / 8%);
+  --sidebar-ring: oklch(0.6 0.12 272);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+    color-scheme: light;
+  }
+  html.dark {
+    color-scheme: dark;
+  }
+}
+
+/* Money / number columns: aligned digits, never wrapped. */
+@utility money {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

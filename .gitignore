@@ -147,3 +147,23 @@ vite.config.ts.timestamp-*
 
 # Turbo Repo
 .turbo
+
+# --- Next.js app (budget-tax-manager) ---
+/.next/
+next-env.d.ts
+.env*
+.DS_Store
+*.pem
+.vercel
+
+# Personal finance data — NEVER commit (see README "Data location")
+/data/
+
+# Playwright (+ the throw-away data dir the e2e server uses)
+/.e2e-data/
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
+.idea/
