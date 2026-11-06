@@ -3,7 +3,7 @@
  */
 import { formatDate, formatDayMonth } from "@/lib/dates";
 import type { AccountBalance, BalanceSheet, GroupBalance } from "@/lib/ledger";
-import { CURRENCY_SYMBOL, effectiveRate, formatRate } from "@/lib/money";
+import { CURRENCY_SYMBOL, FOREIGN_CURRENCIES, effectiveRate, formatRate, sumMoney } from "@/lib/money";
 import { ACCOUNT_GROUPS, ACCOUNT_GROUP_LABELS, type Account, type AccountGroup, type Currency } from "@/lib/types";
 import type { AccountUsage, AccountsPageData } from "@/server/queries";
 
@@ -101,6 +101,45 @@ export function buildGroupSections(data: GroupsInput, showArchived: boolean): Gr
       hiddenCountedCount: showArchived ? 0 : archived.filter((r) => r.included && r.balance !== 0).length,
     };
   });
+}
+
+/** Groups worth a row: they have accounts to show, or hidden archived accounts that still count in the total. */
+export function visibleSections(sections: readonly GroupSectionView[]): GroupSectionView[] {
+  return sections.filter((s) => s.rows.length > 0 || s.totalUah !== 0);
+}
+
+// ------------------------------------------------------------------ selection
+
+export interface SelectionSummary {
+  count: number;
+  /** Σ UAH equivalents at today's NBU rates; accounts without a rate are left out (`missingRates`). */
+  totalUah: number;
+  /** Σ native balances of the selected foreign-currency accounts, one entry per currency. */
+  foreign: { currency: Currency; amount: number }[];
+  /** Selected accounts with no NBU rate. */
+  missingRates: number;
+}
+
+/** The sum of the selected accounts. Ids that are not in `rows` (now hidden or deleted) do not count. */
+export function summarizeSelection(rows: readonly AccountRowView[], selected: ReadonlySet<string>): SelectionSummary {
+  const picked = rows.filter((r) => selected.has(r.account.id));
+  const foreign = FOREIGN_CURRENCIES.flatMap((currency) => {
+    const inCurrency = picked.filter((r) => r.account.currency === currency);
+    return inCurrency.length ? [{ currency, amount: sumMoney(inCurrency.map((r) => r.balance)) }] : [];
+  });
+  return {
+    count: picked.length,
+    totalUah: sumMoney(picked.flatMap((r) => (r.balanceUah === null ? [] : [r.balanceUah]))),
+    foreign,
+    missingRates: picked.filter((r) => r.balanceUah === null).length,
+  };
+}
+
+/** The state of a group's checkbox: all of its accounts, none, or some. */
+export function groupCheckState(rows: readonly AccountRowView[], selected: ReadonlySet<string>): boolean | "indeterminate" {
+  const count = rows.filter((r) => selected.has(r.account.id)).length;
+  if (count === 0) return false;
+  return count === rows.length ? true : "indeterminate";
 }
 
 /** Options for the shared dialogs (Transfer / Update balance), derived from the page's own snapshot. */

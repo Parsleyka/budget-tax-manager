@@ -7,10 +7,13 @@ import {
   deleteBlock,
   dialogOptions,
   formatQuote,
+  groupCheckState,
   recordCount,
   shortDate,
+  summarizeSelection,
   transferQuote,
   usageSummary,
+  visibleSections,
 } from "./accounts-view";
 
 const nbsp = (s: string) => s.replace(/[  ]/g, " ");
@@ -81,6 +84,60 @@ describe("buildGroupSections", () => {
     expect(freelancer.incomplete).toBe(true);
     expect(freelancer.rows[0].balanceUah).toBeNull();
     expect(freelancer.totalUah).toBe(0);
+  });
+});
+
+describe("visibleSections", () => {
+  it("drops groups with nothing to show, keeps hidden archived money in its group", () => {
+    const groups = (showArchived: boolean) => visibleSections(buildGroupSections(pageData(ledger, fx, "main"), showArchived)).map((s) => s.group);
+    expect(groups(false)).toEqual(["active", "freelancer", "ibkr"]);
+    expect(groups(true)).toEqual(["active", "freelancer", "ibkr", "other"]);
+
+    // Only an archived account with money: its total still counts, so the group stays (with no rows).
+    const hidden: LedgerData = { ...ledger, accounts: [main, account({ id: "safe", name: "Safe", group: "other", currency: "UAH", archived: true, openingBalance: 70 })] };
+    const other = visibleSections(buildGroupSections(pageData(hidden, fx, "main"), false)).find((s) => s.group === "other");
+    expect(other).toMatchObject({ rows: [], totalUah: 70 });
+  });
+});
+
+describe("selection", () => {
+  const rows = (fxRates: FxRates = fx) => buildGroupSections(pageData(ledger, fxRates, "main"), false).flatMap((s) => s.rows);
+
+  it("sums the selected accounts in UAH (at the NBU rate) and per foreign currency", () => {
+    // Main card 1 000 + 16 600; FOP USD 1 000 − 400 = 600 $ = 24 750 ₴; IBKR 250,50 $ = 10 333,13 ₴.
+    expect(summarizeSelection(rows(), new Set(["main", "fop-usd", "ibkr"]))).toEqual({
+      count: 3,
+      totalUah: 52_683.13,
+      foreign: [{ currency: "USD", amount: 850.5 }],
+      missingRates: 0,
+    });
+    expect(summarizeSelection(rows(), new Set())).toEqual({ count: 0, totalUah: 0, foreign: [], missingRates: 0 });
+  });
+
+  it("selecting a whole group equals the group's total", () => {
+    const [freelancer] = buildGroupSections(pageData(ledger, fx, "main"), false).filter((s) => s.group === "freelancer");
+    const ids = new Set(freelancer.rows.map((r) => r.account.id));
+    expect(summarizeSelection(freelancer.rows, ids).totalUah).toBe(freelancer.totalUah);
+  });
+
+  it("ignores ids that are no longer listed (hidden archived, deleted)", () => {
+    expect(summarizeSelection(rows(), new Set(["main", "old", "deleted"]))).toMatchObject({ count: 1, totalUah: 17_600 });
+  });
+
+  it("leaves accounts without an NBU rate out of the UAH sum and says so", () => {
+    expect(summarizeSelection(rows({ USD: null }), new Set(["main", "fop-usd"]))).toEqual({
+      count: 2,
+      totalUah: 17_600,
+      foreign: [{ currency: "USD", amount: 600 }],
+      missingRates: 1,
+    });
+  });
+
+  it("gives a group checkbox its state: none, some or all", () => {
+    const list = rows();
+    expect(groupCheckState(list, new Set())).toBe(false);
+    expect(groupCheckState(list, new Set(["main"]))).toBe("indeterminate");
+    expect(groupCheckState(list, new Set(["main", "fop-usd", "ibkr"]))).toBe(true);
   });
 });
 

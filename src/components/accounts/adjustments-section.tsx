@@ -1,10 +1,7 @@
 "use client";
 
-import { AdjustBalanceDialog } from "@/components/forms/adjust-balance-dialog";
 import { DeleteButton } from "@/components/shared/delete-button";
 import { formatMoneyDisplay, Money } from "@/components/shared/money";
-import { SectionCard } from "@/components/shared/section-card";
-import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatDate } from "@/lib/dates";
 import { deleteAdjustment } from "@/server/actions/adjustments";
@@ -13,31 +10,18 @@ import { useAccountsOptions } from "./accounts-options";
 import { shortDate } from "./accounts-view";
 import { ShowAllButton, usePaged } from "./show-more";
 
-/** History of "Update balance" corrections (date, account, change, note): the latest few + "Show all", delete. */
+/** History of "Update balance" corrections, one line each: the latest few + "Show all", delete. */
 export function AdjustmentsSection({ adjustments }: { adjustments: AdjustmentRow[] }) {
   const options = useAccountsOptions();
   const paged = usePaged(adjustments);
 
   return (
-    <SectionCard
-      id="balance-updates"
-      title="Balance updates"
-      action={
-        <AdjustBalanceDialog
-          options={options}
-          trigger={
-            <Button size="sm" variant="ghost" disabled={options.accounts.length === 0}>
-              Update balance
-            </Button>
-          }
-        />
-      }
-    >
+    <div id="balance-updates">
       {adjustments.length === 0 ? (
         <p className="text-sm text-muted-foreground">No balance updates yet.</p>
       ) : (
         <div className="flex flex-col gap-2">
-          <Table>
+          <Table className="[&_td]:py-1">
             <TableHeader className="sr-only">
               <TableRow>
                 <TableHead>Date</TableHead>
@@ -51,9 +35,9 @@ export function AdjustmentsSection({ adjustments }: { adjustments: AdjustmentRow
                 const name = a.account?.name ?? "Unknown account";
                 return (
                   <TableRow key={a.id} className="hover:bg-transparent">
-                    <TableCell className="w-20 align-top text-muted-foreground tabular-nums">{shortDate(a.date, options.today)}</TableCell>
-                    <TableCell className="w-full max-w-0 align-top">
-                      <div className="flex min-w-0 flex-col gap-0.5">
+                    <TableCell className="w-20 text-muted-foreground tabular-nums">{shortDate(a.date, options.today)}</TableCell>
+                    <TableCell className="w-full max-w-0">
+                      <div className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-2">
                         <span className="truncate">{name}</span>
                         {a.note ? (
                           <span className="truncate text-xs text-muted-foreground" title={a.note}>
@@ -62,10 +46,10 @@ export function AdjustmentsSection({ adjustments }: { adjustments: AdjustmentRow
                         ) : null}
                       </div>
                     </TableCell>
-                    <TableCell className="text-right align-top">
+                    <TableCell className="text-right">
                       <Money amount={a.delta} currency={a.currency} signed colored className="font-medium" />
                     </TableCell>
-                    <TableCell className="w-px align-top">
+                    <TableCell className="w-px">
                       <DeleteButton
                         id={a.id}
                         action={deleteAdjustment}
@@ -83,6 +67,6 @@ export function AdjustmentsSection({ adjustments }: { adjustments: AdjustmentRow
           <ShowAllButton paged={paged} />
         </div>
       )}
-    </SectionCard>
+    </div>
   );
 }

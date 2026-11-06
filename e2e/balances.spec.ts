@@ -47,6 +47,43 @@ test("a cross-currency transfer FOP USD → Main card updates both balances", as
   await expect(transfers).toContainText(moneyPattern(50_000, "USD"));
 });
 
+test("select accounts to see their sum: one by one, a whole group, then clear", async ({ page }) => {
+  await page.goto("/accounts");
+  const count = page.getByTestId("accounts-selection-count");
+  const total = page.getByTestId("accounts-total");
+  await expect(count).toHaveCount(0);
+  await expect(page.getByTestId("accounts-list")).toContainText("Net worth");
+
+  const main = await accountBalance(page, "Main card");
+  const deposits = await accountBalance(page, "Deposits");
+  await page.getByRole("checkbox", { name: "Main card" }).click();
+  await page.getByRole("checkbox", { name: "Deposits", exact: true }).click();
+  await expect(count).toHaveText("2 selected");
+  await expect.poll(() => minorOf(total)).toBe(main + deposits);
+  await expect(page.getByTestId("accounts-selection-foreign")).toHaveCount(0);
+
+  // A click on the name ticks the account too; a second tick takes it out of the sum.
+  await page.locator('[data-account="Deposits"] label').click();
+  await expect(count).toHaveText("1 selected");
+  await expect.poll(() => minorOf(total)).toBe(main);
+
+  // The group checkbox: all of it, then a partly selected group selects the rest.
+  const group = page.getByRole("checkbox", { name: "Select all Freelancer accounts" });
+  const inGroup = await page.locator("#group-freelancer").getByTestId("account-row").count();
+  await group.click();
+  await expect(count).toHaveText(`${inGroup + 1} selected`);
+  await expect(page.getByTestId("accounts-selection-foreign")).toContainText("$");
+  await page.getByRole("checkbox", { name: "FOP USD" }).click();
+  await expect(group).toHaveAttribute("aria-checked", "mixed");
+  await group.click();
+  await expect(group).toBeChecked();
+
+  await page.getByRole("button", { name: "Clear" }).click();
+  await expect(count).toHaveCount(0);
+  await expect(page.getByRole("checkbox", { name: "Main card" })).not.toBeChecked();
+  await expect(page.getByTestId("accounts-list")).toContainText("Net worth");
+});
+
 test("Update balance on IBKR records the difference as an adjustment", async ({ page }) => {
   await page.goto("/accounts");
   const before = await accountBalance(page, "IBKR");
@@ -62,6 +99,7 @@ test("Update balance on IBKR records the difference as an adjustment", async ({ 
   await expect(page.getByText("Balance updated").first()).toBeVisible();
 
   await expect.poll(() => accountBalance(page, "IBKR")).toBe(target);
+  await page.getByRole("tab", { name: /^Balance updates/ }).click();
   await expect(page.locator("#balance-updates").getByRole("row").filter({ hasText: "IBKR" }).first()).toContainText(
     moneyPattern(target - before, "USD"),
   );

@@ -6,7 +6,6 @@ import { toast } from "sonner";
 import { TransferDialog } from "@/components/forms/transfer-dialog";
 import { ConfirmDialog } from "@/components/shared/confirm-dialog";
 import { formatMoneyDisplay, Money } from "@/components/shared/money";
-import { SectionCard } from "@/components/shared/section-card";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -17,31 +16,17 @@ import { useAccountsOptions } from "./accounts-options";
 import { formatQuote, shortDate, transferQuote } from "./accounts-view";
 import { ShowAllButton, usePaged } from "./show-more";
 
-/** Transfers between own accounts (incl. currency sales): the latest few + "Show all", add / edit / delete. */
+/** Transfers between own accounts (incl. currency sales), one line each: the latest few + "Show all", edit / delete. */
 export function TransfersSection({ transfers }: { transfers: TransferRow[] }) {
-  const options = useAccountsOptions();
   const paged = usePaged(transfers);
 
   return (
-    <SectionCard
-      id="transfers"
-      title="Transfers"
-      action={
-        <TransferDialog
-          options={options}
-          trigger={
-            <Button size="sm" variant="ghost" disabled={options.accounts.length < 2}>
-              Transfer
-            </Button>
-          }
-        />
-      }
-    >
+    <div id="transfers">
       {transfers.length === 0 ? (
         <p className="text-sm text-muted-foreground">No transfers yet.</p>
       ) : (
         <div className="flex flex-col gap-2">
-          <Table>
+          <Table className="[&_td]:py-1">
             <TableHeader className="sr-only">
               <TableRow>
                 <TableHead>Date</TableHead>
@@ -59,7 +44,7 @@ export function TransfersSection({ transfers }: { transfers: TransferRow[] }) {
           <ShowAllButton paged={paged} />
         </div>
       )}
-    </SectionCard>
+    </div>
   );
 }
 
@@ -71,9 +56,9 @@ function TransferTableRow({ row }: { row: TransferRow }) {
 
   return (
     <TableRow className="hover:bg-transparent">
-      <TableCell className="w-20 align-top text-muted-foreground tabular-nums">{shortDate(row.date, options.today)}</TableCell>
-      <TableCell className="w-full max-w-0 align-top">
-        <div className="flex min-w-0 flex-col gap-0.5">
+      <TableCell className="w-20 text-muted-foreground tabular-nums">{shortDate(row.date, options.today)}</TableCell>
+      <TableCell className="w-full max-w-0">
+        <div className="flex min-w-0 flex-col sm:flex-row sm:items-baseline sm:gap-2">
           <span className="truncate">
             {fromName} <span className="text-muted-foreground">→</span> {toName}
           </span>
@@ -84,18 +69,18 @@ function TransferTableRow({ row }: { row: TransferRow }) {
           ) : null}
         </div>
       </TableCell>
-      <TableCell className="text-right align-top">
-        <div className="flex flex-col items-end gap-0.5">
+      <TableCell className="text-right">
+        <div className="flex flex-col items-end sm:flex-row sm:items-baseline sm:justify-end sm:gap-2">
           <Money amount={row.fromAmount} currency={row.fromCurrency} className="font-medium" />
           {row.fromCurrency !== row.toCurrency ? (
             <span className="text-xs text-muted-foreground">
               <span className="sr-only">received </span>→ <Money amount={row.toAmount} currency={row.toCurrency} />
             </span>
           ) : null}
-          {quote ? <span className="text-xs text-muted-foreground tabular-nums">{formatQuote(quote)}</span> : null}
+          {quote ? <span className="hidden text-xs text-muted-foreground tabular-nums sm:order-first sm:mr-1 sm:inline">{formatQuote(quote)}</span> : null}
         </div>
       </TableCell>
-      <TableCell className="w-px align-top">
+      <TableCell className="w-px">
         <TransferRowActions row={row} label={`${fromName} to ${toName}`} />
       </TableCell>
     </TableRow>

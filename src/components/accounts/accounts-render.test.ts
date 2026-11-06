@@ -10,9 +10,9 @@ import { accountUsage, balanceSheet, computeBalances, type FxRates, type LedgerD
 import { effectiveRate } from "@/lib/money";
 import type { AccountsPageData, AdjustmentRow, TransferRow } from "@/server/queries";
 import { account, adjustment, income, transfer } from "@/test/factories";
-import { AccountGroupCard } from "./account-group-card";
+import { AccountsList } from "./accounts-list";
 import { AccountsOptionsProvider } from "./accounts-options";
-import { buildGroupSections, dialogOptions } from "./accounts-view";
+import { buildGroupSections, dialogOptions, visibleSections } from "./accounts-view";
 import { AdjustmentsSection } from "./adjustments-section";
 import { TransfersSection } from "./transfers-section";
 
@@ -49,6 +49,9 @@ function page(ledger: LedgerData, fx: FxRates): AccountsPageData {
   };
 }
 
+const list = (data: AccountsPageData) =>
+  h(AccountsList, { sections: visibleSections(buildGroupSections(data, false)), netWorthUah: data.balances.netWorthUah, incomplete: false });
+
 function render(data: AccountsPageData, node: ReactNode): string {
   return text(renderToStaticMarkup(h(TooltipProvider, null, h(AccountsOptionsProvider, { options: dialogOptions(data), children: node }))));
 }
@@ -62,11 +65,11 @@ describe("Accounts page pieces", () => {
     const ledger: LedgerData = { accounts: [main, fopUsd], incomes: [], expenses: [], transfers: [], adjustments: [] };
     const data = page(ledger, { USD: { rate: 41.25, date: "2026-10-15", stale: false } });
 
-    const sections = buildGroupSections(data, false);
-    const deposits = render(data, h(AccountGroupCard, { section: sections[3] }));
-    expect(deposits).toContain("Deposits");
-    expect(deposits).toContain("No accounts");
-    expect(deposits).toContain("Add account");
+    const html = render(data, list(data));
+    expect(html).toContain("Freelancer");
+    expect(html).not.toContain("Deposits"); // a group with no accounts takes no space
+    expect(html).toContain("Net worth");
+    expect(html).toContain("1 000,00 ₴");
 
     expect(render(data, h(TransfersSection, { transfers: data.transfers }))).toContain("No transfers yet");
     expect(render(data, h(AdjustmentsSection, { adjustments: data.adjustments }))).toContain("No balance updates yet");
@@ -85,18 +88,15 @@ describe("Accounts page pieces", () => {
     };
     const data = page(ledger, { USD: { rate: 41.25, date: "2026-10-14", stale: true } });
 
-    const [active, freelancer] = buildGroupSections(data, false);
-    const activeHtml = render(data, h(AccountGroupCard, { section: active }));
-    expect(activeHtml).toContain("Active");
-    expect(activeHtml).toContain("Main card Main");
-    expect(activeHtml).toContain("17 600,00 ₴");
-
-    const fopHtml = render(data, h(AccountGroupCard, { section: freelancer }));
-    expect(fopHtml).toContain("600,00 $");
-    expect(fopHtml).toContain("≈ about 24 750,00 ₴");
-    expect(fopHtml).not.toContain("records");
-    expect(fopHtml).not.toContain("1 $ = 41,2500 ₴");
-    expect(fopHtml).not.toContain("Stale");
+    const html = render(data, list(data));
+    expect(html).toContain("Active");
+    expect(html).toContain("Main card Main");
+    expect(html).toContain("17 600,00 ₴");
+    expect(html).toContain("600,00 $");
+    expect(html).toContain("≈ about 24 750,00 ₴");
+    expect(html).not.toContain("records");
+    expect(html).not.toContain("1 $ = 41,2500 ₴");
+    expect(html).not.toContain("Stale");
 
     const transfers = render(data, h(TransfersSection, { transfers: data.transfers }));
     expect(transfers).toContain("FOP USD → Main card");
