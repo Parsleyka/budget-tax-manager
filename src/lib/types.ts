@@ -29,8 +29,13 @@ export interface Account {
   group: AccountGroup;
   /** Accounts in group "active" MUST be UAH. */
   currency: Currency;
-  /** In account currency; may be negative (e.g. a credit card). */
+  /** In account currency; may be negative (e.g. a credit card), unless `neverNegative`. */
   openingBalance: number;
+  /**
+   * The balance stops at 0 instead of going below it: whatever is spent beyond what the account holds
+   * counts as paid from outside (e.g. "Other" for untracked money). The spendings themselves still count.
+   */
+  neverNegative?: boolean;
   /** Hidden from pickers; still counted in balances when its balance ≠ 0. */
   archived: boolean;
   note?: string;

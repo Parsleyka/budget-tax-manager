@@ -3,9 +3,10 @@
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { ACCOUNT_GROUP_ICONS } from "@/components/shared/account-label";
-import { Field, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
+import { Field, FieldContent, FieldDescription, FieldError, FieldGroup, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { parseMoneyInput } from "@/lib/money";
 import { ACCOUNT_GROUPS, ACCOUNT_GROUP_LABELS, type Account, type AccountGroup, type AccountInput, type Currency, type FieldErrors } from "@/lib/types";
 import { createAccount, updateAccount } from "@/server/actions/accounts";
@@ -51,13 +52,14 @@ export function AccountDialog({ open, onOpenChange, trigger, ...rest }: AccountD
   );
 }
 
-const SHOWN = ["name", "group", "currency", "openingBalance", "note"] as const;
+const SHOWN = ["name", "group", "currency", "openingBalance", "neverNegative", "note"] as const;
 
 function AccountForm({ account, currencyLocked, defaults, onSaved, onDone }: Omit<AccountDialogProps, keyof DialogControlProps> & { onDone: () => void }) {
   const [name, setName] = useState(account?.name ?? defaults?.name ?? "");
   const [group, setGroup] = useState<AccountGroup>(account?.group ?? defaults?.group ?? "other");
   const [currency, setCurrency] = useState<Currency>(account?.currency ?? (defaults?.group === "active" ? "UAH" : (defaults?.currency ?? "UAH")));
   const [opening, setOpening] = useState(account ? moneyToInput(account.openingBalance) : "");
+  const [neverNegative, setNeverNegative] = useState(account?.neverNegative ?? false);
   const [note, setNote] = useState(account?.note ?? "");
   const [errors, setErrors] = useState<FieldErrors>({});
   const [formError, setFormError] = useState<string | null>(null);
@@ -73,11 +75,12 @@ function AccountForm({ account, currencyLocked, defaults, onSaved, onDone }: Omi
     const next: FieldErrors = {};
     if (!name.trim()) next.name = ["Enter a name"];
     if (parsedOpening === null) next.openingBalance = ["Enter a valid amount (at most 2 decimals; may be negative)"];
+    else if (neverNegative && parsedOpening < 0) next.openingBalance = ["Can't be negative while “Never below 0” is on"];
     if (group === "active" && currency !== "UAH") next.currency = ["Accounts in the Active group must be in UAH"];
     setErrors(next);
     setFormError(null);
     if (Object.keys(next).length) return;
-    const input: AccountInput = { name: name.trim(), group, currency, openingBalance: parsedOpening!, note: note.trim() || null };
+    const input: AccountInput = { name: name.trim(), group, currency, openingBalance: parsedOpening!, neverNegative, note: note.trim() || null };
     startTransition(async () => {
       const res = account ? await updateAccount(account.id, input) : await createAccount(input);
       if (res.ok) {
@@ -142,6 +145,14 @@ function AccountForm({ account, currencyLocked, defaults, onSaved, onDone }: Omi
           <MoneyInput id="account-opening" value={opening} onChange={setOpening} currency={currency} invalid={!!errors.openingBalance} />
           <FieldDescription className="text-xs">What the account held before you started tracking it here.</FieldDescription>
           <FieldError>{errorOf(errors, "openingBalance")}</FieldError>
+        </Field>
+        <Field orientation="horizontal" data-invalid={!!errors.neverNegative || undefined}>
+          <FieldContent>
+            <FieldLabel htmlFor="account-never-negative">Never below 0</FieldLabel>
+            <FieldDescription className="text-xs">Spending beyond its balance counts as paid from outside.</FieldDescription>
+            <FieldError>{errorOf(errors, "neverNegative")}</FieldError>
+          </FieldContent>
+          <Switch id="account-never-negative" checked={neverNegative} onCheckedChange={setNeverNegative} />
         </Field>
         <Field data-invalid={!!errors.note || undefined}>
           <FieldLabel htmlFor="account-note">

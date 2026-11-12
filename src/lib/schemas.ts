@@ -87,6 +87,7 @@ export const AccountSchema = z
     group: AccountGroupSchema,
     currency: CurrencySchema,
     openingBalance: MoneySchema,
+    neverNegative: z.boolean().optional(),
     archived: z.boolean(),
     note: z.string().optional(),
     createdAt: TimestampSchema,
@@ -451,11 +452,16 @@ export const AccountInputSchema = z
     group: AccountGroupSchema,
     currency: CurrencySchema,
     openingBalance: MoneySchema.default(0),
+    neverNegative: z.boolean().default(false),
     note: optionalText(1000),
   })
   .refine((a) => a.group !== "active" || a.currency === "UAH", {
     message: "Accounts in the Active group must be in UAH",
     path: ["currency"],
+  })
+  .refine((a) => !a.neverNegative || a.openingBalance >= 0, {
+    message: "The opening balance can't be negative for an account that never goes below 0",
+    path: ["openingBalance"],
   });
 
 /** setActualBalance: the user enters the NEW actual balance; the server stores delta = new − current. */

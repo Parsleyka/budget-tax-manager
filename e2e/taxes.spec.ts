@@ -10,6 +10,8 @@ test.describe.configure({ mode: "serial" });
 const DATE = "2026-08-14"; // Q3 2026 (Friday)
 const AMOUNT_MINOR = 200_000; // 2 000,00 $
 const MIN_ESV_2026 = 190_234; // 1 902,34 ₴ = 22% × 8 647
+/** Today's month number in Kyiv: "YTD" selects January up to it. */
+const kyivMonth = () => Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Kyiv", month: "numeric" }).format(new Date()));
 
 type TaxLine = "income" | "single" | "levy" | "esv" | "total";
 const taxLine = (page: Page, id: TaxLine) => minorOf(page.getByTestId(`tax-${id}`));
@@ -83,8 +85,8 @@ test("ЄСВ is 1 902,34 ₴ per selected month in “minimum” mode", async ({
   await selectMonths(page, "Aug");
   await expect.poll(() => taxLineOrNull(page, "esv")).toBe(MIN_ESV_2026);
 
-  await selectMonths(page, "YTD"); // Jan–Oct 2026
-  await expect.poll(() => taxLineOrNull(page, "esv")).toBe(10 * MIN_ESV_2026);
+  await selectMonths(page, "YTD"); // January up to the current month of 2026
+  await expect.poll(() => taxLineOrNull(page, "esv")).toBe(kyivMonth() * MIN_ESV_2026);
 
   // Back to the default for the rest of the suite.
   await setEsvMode(page, /^Employed/);

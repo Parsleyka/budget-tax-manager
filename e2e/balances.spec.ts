@@ -84,6 +84,30 @@ test("select accounts to see their sum: one by one, a whole group, then clear", 
   await expect(page.getByTestId("accounts-list")).toContainText("Net worth");
 });
 
+test("an account set to “Never below 0” stops at 0 when more is spent from it", async ({ page }) => {
+  await page.goto("/accounts");
+  await page.getByRole("button", { name: "Actions for Other" }).click();
+  await page.getByRole("menuitem", { name: "Edit" }).click();
+  const dialog = page.getByRole("dialog", { name: "Edit account" });
+  const neverNegative = dialog.getByRole("switch", { name: "Never below 0" });
+  if (!(await neverNegative.isChecked())) await neverNegative.click();
+  await dialog.getByRole("button", { name: "Save changes" }).click();
+  await expect(dialog).toBeHidden();
+
+  const before = await accountBalance(page, "Other");
+  await page.goto("/expenses");
+  await page.getByRole("button", { name: /^Add (your first )?spending$/ }).first().click();
+  const spending = page.getByRole("dialog", { name: "Add spending" });
+  await spending.getByRole("textbox", { name: "Amount" }).fill(String((before + 1_000_000) / 100).replace(".", ","));
+  await chooseOption(page, spending.getByRole("combobox", { name: "Account" }), /^Other/);
+  await chooseOption(page, spending.getByRole("combobox", { name: "Category" }), "Other");
+  await spending.getByRole("button", { name: "Add spending" }).click();
+  await expect(spending).toBeHidden();
+
+  await page.goto("/accounts");
+  await expect.poll(() => accountBalance(page, "Other")).toBe(0);
+});
+
 test("Update balance on IBKR records the difference as an adjustment", async ({ page }) => {
   await page.goto("/accounts");
   const before = await accountBalance(page, "IBKR");

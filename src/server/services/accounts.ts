@@ -31,6 +31,7 @@ export function createAccount(input: unknown): Promise<ActionResult<Account>> {
       group: a.group,
       currency: a.currency,
       openingBalance: a.openingBalance,
+      ...(a.neverNegative ? { neverNegative: true } : {}),
       archived: false,
       ...(a.note ? { note: a.note } : {}),
       createdAt: now,
@@ -56,14 +57,16 @@ export function updateAccount(id: unknown, input: unknown): Promise<ActionResult
       if (problem) return fromProblem(problem);
       return ok(
         await accountsRepo.update(accountId, (old) => {
-          const { note: _oldNote, ...rest } = old;
+          const { note: _oldNote, neverNegative: _oldFloor, ...rest } = old;
           void _oldNote;
+          void _oldFloor;
           return {
             ...rest,
             name: a.name,
             group: a.group,
             currency: a.currency,
             openingBalance: a.openingBalance,
+            ...(a.neverNegative ? { neverNegative: true } : {}),
             ...(a.note ? { note: a.note } : {}),
             updatedAt: nowIso(),
           };
@@ -124,6 +127,10 @@ export function setActualBalance(input: unknown): Promise<ActionResult<Adjustmen
       if (later) {
         const msg = `This account's value was set on ${formatDate(later.date)} on the Investments page — update it there, or pick a later date`;
         return fail(msg, { date: [msg] });
+      }
+      if (acc.account.neverNegative && p.newBalance < 0) {
+        const msg = "This account never goes below 0 — enter 0 or more";
+        return fail(msg, { newBalance: [msg] });
       }
       const current = accountBalance(p.accountId, snapshot, { asOf: p.date });
       const delta = fromMinor(toMinor(p.newBalance) - toMinor(current));

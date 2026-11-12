@@ -186,6 +186,27 @@ describe("expenses & tax payments", () => {
 });
 
 describe("accounts, categories, transfers, adjustments", () => {
+  it("“Never below 0”: saved on the account, overspending stops at 0, a negative balance can't be entered", async () => {
+    const other = acc("Other");
+    const on = await accounts.updateAccount(other.id, { name: "Other", group: "other", currency: "UAH", openingBalance: 0, neverNegative: true });
+    expect(on.ok && on.data.neverNegative).toBe(true);
+    await expenses.createExpense({ date: "2026-10-09", amount: 12_146, accountId: other.id, categoryId: cat("Other").id });
+    expect(accountBalance(other.id, await readSnapshot())).toBe(0);
+
+    const negativeOpening = await accounts.updateAccount(other.id, { name: "Other", group: "other", currency: "UAH", openingBalance: -5, neverNegative: true });
+    expect(!negativeOpening.ok && negativeOpening.fieldErrors?.openingBalance).toBeTruthy();
+    const negativeBalance = await accounts.setActualBalance({ accountId: other.id, date: "2026-10-15", newBalance: -10 });
+    expect(!negativeBalance.ok && negativeBalance.fieldErrors?.newBalance?.[0]).toMatch(/never goes below 0/);
+    const topUp = await accounts.setActualBalance({ accountId: other.id, date: "2026-10-15", newBalance: 300 });
+    expect(topUp.ok && topUp.data.delta).toBe(300);
+
+    // Export → import keeps the flag; switching it off brings the overspending back.
+    const again = await importData(JSON.stringify(await exportData()));
+    expect(again.ok && (await readSnapshot()).accounts.find((a) => a.id === other.id)?.neverNegative).toBe(true);
+    const off = await accounts.updateAccount(other.id, { name: "Other", group: "other", currency: "UAH", openingBalance: 0 });
+    expect(off.ok && "neverNegative" in off.data).toBe(false);
+    expect(accountBalance(other.id, await readSnapshot())).toBe(-12_146 + 300);
+  });
   it("cannot delete a referenced account (archive instead); can delete an unused one", async () => {
     await incomes.createIncome({ kind: "salary", date: "2026-10-05", amount: 100, currency: "UAH", accountId: acc("Deposits").id });
     const r = await accounts.deleteAccount(acc("Deposits").id);

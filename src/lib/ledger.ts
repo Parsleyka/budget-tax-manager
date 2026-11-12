@@ -63,15 +63,20 @@ export function accountBalancesMinor(data: LedgerData, options: BalanceOptions =
   // it; a same-day movement entered AFTER it (e.g. "updated the value, then deposited") counts on top.
   const valued = latestValuations(data.valuations ?? [], asOf);
   const bal = new Map<string, number>();
+  // Accounts that never go below 0 can't just sum: their movements are replayed in order (see below).
+  const floored = new Map<string, { date: string; createdAt: string; minor: number }[]>();
   for (const a of data.accounts) {
     const v = valued.get(a.id);
     bal.set(a.id, v ? toMinor(v.value) : toMinor(a.openingBalance));
+    if (a.neverNegative) floored.set(a.id, []);
   }
   const add = (id: string, date: string, createdAt: string, minor: number) => {
     if (!bal.has(id) || !inRange(date)) return;
     const v = valued.get(id);
     if (v && (date < v.date || (date === v.date && createdAt <= v.createdAt))) return;
-    bal.set(id, (bal.get(id) ?? 0) + minor);
+    const moves = floored.get(id);
+    if (moves) moves.push({ date, createdAt, minor });
+    else bal.set(id, (bal.get(id) ?? 0) + minor);
   };
   for (const i of data.incomes) add(i.accountId, i.date, i.createdAt, toMinor(i.amount) - toMinor(i.fee ?? 0));
   for (const e of data.expenses) add(e.accountId, e.date, e.createdAt, -toMinor(e.amount));
@@ -82,6 +87,11 @@ export function accountBalancesMinor(data: LedgerData, options: BalanceOptions =
   for (const adj of data.adjustments) add(adj.accountId, adj.date, adj.createdAt, toMinor(adj.delta));
   for (const f of data.investmentFlows ?? []) add(f.accountId, f.date, f.createdAt, (f.kind === "deposit" ? 1 : -1) * toMinor(f.amount));
   for (const m of repaymentAccountMovements(data.debts ?? [])) add(m.accountId, m.date, m.createdAt, m.minor);
+  // Oldest first; the balance stops at 0 after every movement, so a later top-up starts from 0 again.
+  for (const [id, moves] of floored) {
+    moves.sort((a, b) => a.date.localeCompare(b.date) || a.createdAt.localeCompare(b.createdAt));
+    bal.set(id, moves.reduce((minor, m) => Math.max(0, minor + m.minor), Math.max(0, bal.get(id) ?? 0)));
+  }
   return bal;
 }
 

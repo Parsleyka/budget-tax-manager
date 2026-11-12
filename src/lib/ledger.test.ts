@@ -60,6 +60,52 @@ describe("account balances", () => {
   });
 });
 
+describe("an account that never goes below 0", () => {
+  const cash = account({ id: "cash", name: "Other", group: "other", currency: "UAH", neverNegative: true });
+  const floored = (over: Partial<LedgerData>) => data({ accounts: [main, cash], ...over });
+
+  it("stops at 0 when overspent, and a later top-up starts from 0 again", () => {
+    const d = floored({
+      incomes: [income({ kind: "salary", accountId: "cash", amount: 500, date: "2026-03-01" })],
+      expenses: [expense({ accountId: "cash", amount: 12_146, date: "2026-02-01" }), expense({ accountId: "main", amount: 1500, date: "2026-02-01" })],
+    });
+    expect(accountBalance("cash", d, { asOf: "2026-02-15" })).toBe(0);
+    expect(accountBalance("cash", d)).toBe(500); // not 500 − 12 146
+    expect(accountBalance("main", d)).toBe(-500); // other accounts may still go negative
+  });
+
+  it("replays by date (then entry time), not by the order records were added", () => {
+    // The income is dated before the spending but was entered after it.
+    const d = floored({
+      expenses: [expense({ accountId: "cash", amount: 300, date: "2026-02-10", createdAt: "2026-02-10T10:00:00.000Z" })],
+      incomes: [income({ kind: "salary", accountId: "cash", amount: 1000, date: "2026-02-01", createdAt: "2026-02-11T10:00:00.000Z" })],
+    });
+    expect(accountBalance("cash", d)).toBe(700);
+    // Same day: the earlier entry counts first.
+    const sameDay = floored({
+      incomes: [income({ kind: "salary", accountId: "cash", amount: 100, date: "2026-02-10", createdAt: "2026-02-10T12:00:00.000Z" })],
+      expenses: [expense({ accountId: "cash", amount: 300, date: "2026-02-10", createdAt: "2026-02-10T09:00:00.000Z" })],
+    });
+    expect(accountBalance("cash", sameDay)).toBe(100);
+  });
+
+  it("a transfer out of it pays the other account in full; it only stops at 0", () => {
+    const d = floored({
+      transfers: [transfer({ fromAccountId: "cash", toAccountId: "main", fromAmount: 200, toAmount: 200 })],
+      adjustments: [adjustment({ accountId: "cash", delta: 50, date: "2026-01-01" })],
+    });
+    expect(computeBalances(d)).toMatchObject({ cash: 0, main: 1200 });
+  });
+
+  it("a negative opening balance counts as 0, and so do Net worth and the Frozen balance", () => {
+    const d = floored({ accounts: [main, { ...cash, openingBalance: -40 }], expenses: [expense({ accountId: "cash", amount: 99 })] });
+    expect(accountBalance("cash", d)).toBe(0);
+    const sheet = balanceSheet(d, {});
+    expect(sheet.frozenUah).toBe(0);
+    expect(sheet.netWorthUah).toBe(1000);
+  });
+});
+
 describe("balance sheet (Active / Frozen / Net worth with FX)", () => {
   it("converts at today's rate and groups", () => {
     const d = data({
